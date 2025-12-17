@@ -1,20 +1,28 @@
-// src/api/playlists/routes.js
 const routes = (handler) => [
   {
     method: 'POST',
     path: '/playlists',
     handler: handler.postPlaylistHandler,
-    options: {
-      auth: 'openmusicapp_jwt', // Hanya user yang login bisa akses
-    },
+    options: { auth: 'openmusicapp_jwt' },
   },
   {
     method: 'GET',
     path: '/playlists',
     handler: handler.getPlaylistsHandler,
-    options: {
-      auth: 'openmusicapp_jwt',
-    },
+    options: { auth: 'openmusicapp_jwt' },
   },
-  // ... begitu juga untuk DELETE dan manipulasi lagu
+  {
+    method: 'POST',
+    path: '/playlists/{id}/songs',
+    handler: handler.postSongToPlaylistHandler,
+    options: { auth: 'openmusicapp_jwt' },
+  },
+  {
+    method: 'GET',
+    path: '/playlists/{id}/activities',
+    handler: handler.getPlaylistActivitiesHandler,
+    options: { auth: 'openmusicapp_jwt' },
+  },
 ];
+
+module.exports = routes;

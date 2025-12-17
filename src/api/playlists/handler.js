@@ -1,26 +1,70 @@
-// src/api/playlists/handler.js
-async function postPlaylistHandler(request, h) {
-  this._validator.validatePlaylistPayload(request.payload);
-  const { name } = request.payload;
-  
-  // Ambil ID user dari kredensial JWT
-  const { id: credentialId } = request.auth.credentials;
+const autoBind = require('auto-bind');
 
-  const playlistId = await this._service.addPlaylist({ name, owner: credentialId });
+class PlaylistsHandler {
+  constructor(service, validator) {
+    this._service = service;
+    this._validator = validator;
 
-  const response = h.response({
-    status: 'success',
-    data: { playlistId },
-  });
-  response.code(201);
-  return response;
-}
-async function getPlaylistsHandler(request) {
-  // Ambil ID user dari kredensial JWT
-  const { id: credentialId } = request.auth.credentials;
+    autoBind(this);
+  }
+
+  async postPlaylistHandler(request, h) {
+    this._validator.validatePlaylistPayload(request.payload);
+    const { name } = request.payload;
+    const { id: credentialId } = request.auth.credentials;
+
+    const playlistId = await this._service.addPlaylist({ name, owner: credentialId });
+
+    const response = h.response({
+      status: 'success',
+      data: { playlistId },
+    });
+    response.code(201);
+    return response;
+  }
+
+  async getPlaylistsHandler(request) {
+    const { id: credentialId } = request.auth.credentials;
     const playlists = await this._service.getPlaylists(credentialId);
     return {
       status: 'success',
       data: { playlists },
     };
+  }
+
+  async postSongToPlaylistHandler(request, h) {
+    this._validator.validatePlaylistSongPayload(request.payload);
+    const { songId } = request.payload;
+    const { id: playlistId } = request.params;
+    const { id: credentialId } = request.auth.credentials;
+
+    await this._service.verifyPlaylistAccess(playlistId, credentialId);
+    await this._service.addSongToPlaylist(playlistId, songId);
+    await this._service.addPlaylistActivity(playlistId, songId, credentialId, 'add');
+
+    const response = h.response({
+      status: 'success',
+      message: 'Lagu berhasil ditambahkan ke playlist',
+    });
+    response.code(201);
+    return response;
+  }
+
+  async getPlaylistActivitiesHandler(request) {
+    const { id: playlistId } = request.params;
+    const { id: credentialId } = request.auth.credentials;
+
+    await this._service.verifyPlaylistAccess(playlistId, credentialId);
+    const activities = await this._service.getPlaylistActivities(playlistId);
+
+    return {
+      status: 'success',
+      data: {
+        playlistId,
+        activities,
+      },
+    };
+  }
 }
+
+module.exports = PlaylistsHandler;
