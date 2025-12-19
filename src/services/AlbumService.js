@@ -68,7 +68,8 @@ class AlbumsService {
 
     if (!result.rows.length) {
       throw new NotFoundError('Album gagal dihapus. Id tidak ditemukan'); 
+    }
   }
-}}
+}
 
 module.exports = AlbumsService;

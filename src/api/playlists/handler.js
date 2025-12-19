@@ -1,24 +1,18 @@
-const autoBind = require('auto-bind'); // Pastikan package ini terinstal
+const autoBind = require('auto-bind');
 
 class PlaylistsHandler {
   constructor(service, validator) {
     this._service = service;
     this._validator = validator;
-
-    autoBind(this); // Memastikan context 'this' aman untuk Hapi
+    autoBind(this); // Menggunakan auto-bind agar this tetap aman
   }
 
   async postPlaylistHandler(request, h) {
     this._validator.validatePlaylistPayload(request.payload);
     const { name } = request.payload;
     const { id: credentialId } = request.auth.credentials;
-
     const playlistId = await this._service.addPlaylist({ name, owner: credentialId });
-
-    const response = h.response({
-      status: 'success',
-      data: { playlistId },
-    });
+    const response = h.response({ status: 'success', data: { playlistId } });
     response.code(201);
     return response;
   }
@@ -26,23 +20,15 @@ class PlaylistsHandler {
   async getPlaylistsHandler(request) {
     const { id: credentialId } = request.auth.credentials;
     const playlists = await this._service.getPlaylists(credentialId);
-    return {
-      status: 'success',
-      data: { playlists },
-    };
+    return { status: 'success', data: { playlists } };
   }
 
   async deletePlaylistByIdHandler(request) {
     const { id } = request.params;
     const { id: credentialId } = request.auth.credentials;
-
     await this._service.verifyPlaylistOwner(id, credentialId);
     await this._service.deletePlaylistById(id);
-
-    return {
-      status: 'success',
-      message: 'Playlist berhasil dihapus',
-    };
+    return { status: 'success', message: 'Playlist berhasil dihapus' };
   }
 
   async postSongToPlaylistHandler(request, h) {
@@ -52,14 +38,10 @@ class PlaylistsHandler {
     const { id: credentialId } = request.auth.credentials;
 
     await this._service.verifyPlaylistAccess(playlistId, credentialId);
-    // Pastikan songsService.getSongById dipanggil di sini jika diperlukan
-    await this._service.addSongToPlaylist(playlistId, songId);
-    await this._service.addPlaylistActivity(playlistId, songId, credentialId, 'add');
+    await this._service.addSongToPlaylist(playlistId, songId); // Kriteria 2
+    await this._service.addPlaylistActivity(playlistId, songId, credentialId, 'add'); // Opsional 2
 
-    const response = h.response({
-      status: 'success',
-      message: 'Lagu berhasil ditambahkan ke playlist',
-    });
+    const response = h.response({ status: 'success', message: 'Lagu berhasil ditambahkan ke playlist' });
     response.code(201);
     return response;
   }
@@ -67,14 +49,9 @@ class PlaylistsHandler {
   async getSongsFromPlaylistHandler(request) {
     const { id: playlistId } = request.params;
     const { id: credentialId } = request.auth.credentials;
-
     await this._service.verifyPlaylistAccess(playlistId, credentialId);
     const playlist = await this._service.getSongsFromPlaylist(playlistId);
-
-    return {
-      status: 'success',
-      data: { playlist },
-    };
+    return { status: 'success', data: { playlist } };
   }
 
   async deleteSongFromPlaylistHandler(request) {
@@ -85,28 +62,17 @@ class PlaylistsHandler {
 
     await this._service.verifyPlaylistAccess(playlistId, credentialId);
     await this._service.deleteSongFromPlaylist(playlistId, songId);
-    await this._service.addPlaylistActivity(playlistId, songId, credentialId, 'delete');
+    await this._service.addPlaylistActivity(playlistId, songId, credentialId, 'delete'); // Opsional 2
 
-    return {
-      status: 'success',
-      message: 'Lagu berhasil dihapus dari playlist',
-    };
+    return { status: 'success', message: 'Lagu berhasil dihapus dari playlist' };
   }
 
   async getPlaylistActivitiesHandler(request) {
     const { id: playlistId } = request.params;
     const { id: credentialId } = request.auth.credentials;
-
     await this._service.verifyPlaylistAccess(playlistId, credentialId);
     const activities = await this._service.getPlaylistActivities(playlistId);
-
-    return {
-      status: 'success',
-      data: {
-        playlistId,
-        activities,
-      },
-    };
+    return { status: 'success', data: { playlistId, activities } };
   }
 }
 
