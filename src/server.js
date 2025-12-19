@@ -11,12 +11,14 @@ const users = require('./api/users');
 const authentications = require('./api/authentications');
 
 // 2. Import Services (Sesuaikan dengan nama file fisik Anda)
-const AlbumsService = require('./services/AlbumService'); //
-const SongsService = require('./services/SongsServices'); //
+const AlbumsService = require('./services/AlbumService'); 
+const SongsService = require('./services/SongsServices'); 
 const UsersService = require('./services/postgres/UsersService');
 const AuthenticationsService = require('./services/postgres/AuthenticationsService');
 const CollaborationsService = require('./services/postgres/CollaborationsService');
 const PlaylistsService = require('./services/postgres/PlaylistsService');
+const collaborations = require('./api/collaborations');
+const CollaborationsValidator = require('./validator/collaborations');
 
 // 3. Import Validators
 const AlbumsValidator = require('./validator/albums');
@@ -36,6 +38,7 @@ const init = async () => {
   const authenticationsService = new AuthenticationsService();
   const collaborationsService = new CollaborationsService();
   const playlistsService = new PlaylistsService(collaborationsService);
+  
 
   const server = Hapi.server({
     port: process.env.PORT || 5000,
@@ -60,6 +63,7 @@ const init = async () => {
     { plugin: users, options: { service: usersService, validator: UsersValidator } },
     { plugin: authentications, options: { authenticationsService, usersService, tokenManager: TokenManager, validator: AuthenticationsValidator } },
     { plugin: playlists, options: { service: playlistsService, validator: PlaylistsValidator } },
+    { plugin: collaborations,options: { collaborationsService, playlistsService, validator: CollaborationsValidator  } },
   ]);
 
   server.ext('onPreResponse', (request, h) => {

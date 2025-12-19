@@ -1,7 +1,7 @@
 const pool = require('./postgres/pool');
 const { nanoid } = require('nanoid');
-const NotFoundError = require('../exeptions/NotFoundError'); 
-const InvariantError = require('../exeptions/InvariantError'); 
+const NotFoundError = require('../exceptions/NotFoundError'); 
+const InvariantError = require('../exceptions/InvariantError'); 
 
 class AlbumsService {
   async addAlbum({ name, year }) {

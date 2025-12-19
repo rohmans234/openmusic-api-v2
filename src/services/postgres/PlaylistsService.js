@@ -32,18 +32,27 @@ class PlaylistsService {
     return result.rows;
   }
 
-  // Kriteria 3: Menambahkan lagu ke playlist
-  async addSongToPlaylist(playlistId, songId) {
-    const id = `ps-${nanoid(16)}`;
-    const query = {
-      text: 'INSERT INTO playlist_songs VALUES($1, $2, $3) RETURNING id',
-      values: [id, playlistId, songId],
-    };
-    const result = await this._pool.query(query);
-    if (!result.rows.length) throw new InvariantError('Lagu gagal ditambahkan ke playlist');
+  
+async addSongToPlaylist(playlistId, songId) {
+ 
+  const songQuery = {
+    text: 'SELECT id FROM songs WHERE id = $1',
+    values: [songId],
+  };
+  const songResult = await this._pool.query(songQuery);
+  if (!songResult.rows.length) {
+    throw new NotFoundError('Lagu tidak ditemukan');
   }
 
-  // LOGIKA OTORISASI (TAHAP 4)
+  const id = `ps-${nanoid(16)}`;
+  const query = {
+    text: 'INSERT INTO playlist_songs VALUES($1, $2, $3) RETURNING id',
+    values: [id, playlistId, songId],
+  };
+  const result = await this._pool.query(query);
+  if (!result.rows.length) throw new InvariantError('Lagu gagal ditambahkan');
+}
+
   async verifyPlaylistOwner(id, owner) {
     const query = {
       text: 'SELECT owner FROM playlists WHERE id = $1',
@@ -79,7 +88,6 @@ class PlaylistsService {
     await this._pool.query(query);
   }
 
-  // Fungsi untuk mendapatkan riwayat aktivitas (Untuk GET /playlists/{id}/activities)
   async getPlaylistActivities(playlistId) {
     const query = {
       text: `SELECT users.username, songs.title, psa.action, psa.time
@@ -93,5 +101,30 @@ class PlaylistsService {
     const result = await this._pool.query(query);
     return result.rows;
   }
+  async getSongsFromPlaylist(playlistId) {
+  const playlistQuery = {
+    text: `SELECT playlists.id, playlists.name, users.username 
+           FROM playlists 
+           JOIN users ON users.id = playlists.owner 
+           WHERE playlists.id = $1`,
+    values: [playlistId],
+  };
+  
+  const songsQuery = {
+    text: `SELECT songs.id, songs.title, songs.performer 
+           FROM songs 
+           JOIN playlist_songs ON playlist_songs.song_id = songs.id 
+           WHERE playlist_songs.playlist_id = $1`,
+    values: [playlistId],
+  };
+
+  const playlistResult = await this._pool.query(playlistQuery);
+  const songsResult = await this._pool.query(songsQuery);
+
+  return {
+    ...playlistResult.rows[0],
+    songs: songsResult.rows,
+  };
+}
 }
 module.exports = PlaylistsService;
