@@ -67,23 +67,36 @@ const init = async () => {
   ]);
 
   server.ext('onPreResponse', (request, h) => {
-    const { response } = request;
-    if (response instanceof Error) {
-      if (response instanceof ClientError) {
-        const newResponse = h.response({ status: 'fail', message: response.message });
-        newResponse.code(response.statusCode);
-        return newResponse;
-      }
-      if (!response.isServer) return h.continue;
-      const newResponse = h.response({ status: 'error', message: 'Maaf, terjadi kegagalan pada server kami.' });
-      newResponse.code(500);
+  const { response } = request;
+
+  if (response instanceof Error) {
+    // Penanganan client error secara internal (400, 401, 403, 404)
+    if (response instanceof ClientError) {
+      const newResponse = h.response({
+        status: 'fail',
+        message: response.message,
+      });
+      newResponse.code(response.statusCode);
       return newResponse;
     }
-    return h.continue;
-  });
 
-  await server.start();
-  console.log(`Server berjalan pada ${server.info.uri}`);
+    // Mempertahankan penanganan error bawaan Hapi (seperti 401 dari auth strategy)
+    if (!response.isServer) {
+      return h.continue;
+    }
+
+    // Penanganan server error (500)
+    const newResponse = h.response({
+      status: 'error',
+      message: 'Maaf, terjadi kegagalan pada server kami.',
+    });
+    newResponse.code(500);
+    return newResponse;
+  }
+
+  return h.continue;
+});
+
 };
 
 init();

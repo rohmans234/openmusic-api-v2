@@ -54,14 +54,20 @@ async addSongToPlaylist(playlistId, songId) {
 }
 
   async verifyPlaylistOwner(id, owner) {
-    const query = {
-      text: 'SELECT owner FROM playlists WHERE id = $1',
-      values: [id],
-    };
-    const result = await this._pool.query(query);
-    if (!result.rows.length) throw new NotFoundError('Playlist tidak ditemukan');
-    if (result.rows[0].owner !== owner) throw new AuthorizationError('Anda bukan pemilik playlist ini');
+  const query = {
+    text: 'SELECT owner FROM playlists WHERE id = $1',
+    values: [id],
+  };
+  const result = await this._pool.query(query);
+  
+  if (!result.rows.length) {
+    throw new NotFoundError('Playlist tidak ditemukan'); // Harus 404
   }
+  
+  if (result.rows[0].owner !== owner) {
+    throw new AuthorizationError('Anda tidak berhak mengakses resource ini'); // Harus 403
+  }
+}
 
   async verifyPlaylistAccess(playlistId, userId) {
     try {
@@ -102,29 +108,75 @@ async addSongToPlaylist(playlistId, songId) {
     return result.rows;
   }
   async getSongsFromPlaylist(playlistId) {
-  const playlistQuery = {
+  // 1. Ambil informasi playlist dan username pemiliknya
+  const queryPlaylist = {
     text: `SELECT playlists.id, playlists.name, users.username 
-           FROM playlists 
-           JOIN users ON users.id = playlists.owner 
+           FROM playlists
+           JOIN users ON users.id = playlists.owner
            WHERE playlists.id = $1`,
     values: [playlistId],
   };
-  
-  const songsQuery = {
+
+  const resultPlaylist = await this._pool.query(queryPlaylist);
+  if (!resultPlaylist.rows.length) {
+    throw new NotFoundError('Playlist tidak ditemukan');
+  }
+
+  // 2. Ambil daftar lagu yang tergabung dalam playlist tersebut
+  const querySongs = {
     text: `SELECT songs.id, songs.title, songs.performer 
-           FROM songs 
-           JOIN playlist_songs ON playlist_songs.song_id = songs.id 
+           FROM songs
+           JOIN playlist_songs ON playlist_songs.song_id = songs.id
            WHERE playlist_songs.playlist_id = $1`,
     values: [playlistId],
   };
 
-  const playlistResult = await this._pool.query(playlistQuery);
-  const songsResult = await this._pool.query(songsQuery);
+  const resultSongs = await this._pool.query(querySongs);
 
-  return {
-    ...playlistResult.rows[0],
-    songs: songsResult.rows,
+  // 3. Gabungkan menjadi struktur objek bersarang sesuai ekspektasi Postman
+  const playlist = resultPlaylist.rows[0];
+  playlist.songs = resultSongs.rows;
+
+  return playlist;
+}
+
+// Kriteria 2: Validasi songId wajib menghasilkan 404 jika ID tidak valid
+async addSongToPlaylist(playlistId, songId) {
+  // VALIDASI MANUAL: Cek keberadaan lagu sebelum insert
+  const songQuery = {
+    text: 'SELECT id FROM songs WHERE id = $1',
+    values: [songId],
   };
+  const songResult = await this._pool.query(songQuery);
+
+  if (!songResult.rows.length) {
+    throw new NotFoundError('Lagu tidak ditemukan. Gagal menambahkan ke playlist.');
+  }
+
+  const id = `ps-${nanoid(16)}`;
+  const query = {
+    text: 'INSERT INTO playlist_songs VALUES($1, $2, $3) RETURNING id',
+    values: [id, playlistId, songId],
+  };
+  const result = await this._pool.query(query);
+
+  if (!result.rows.length) {
+    throw new InvariantError('Lagu gagal ditambahkan ke playlist');
+  }
+}
+// Opsional 2: Mendapatkan aktivitas playlist dengan join tabel yang benar
+async getPlaylistActivities(playlistId) {
+  const query = {
+    text: `SELECT users.username, songs.title, psa.action, psa.time
+           FROM playlist_song_activities psa
+           JOIN users ON users.id = psa.user_id
+           JOIN songs ON songs.id = psa.song_id
+           WHERE psa.playlist_id = $1
+           ORDER BY psa.time ASC`,
+    values: [playlistId],
+  };
+  const result = await this._pool.query(query);
+  return result.rows;
 }
 }
 module.exports = PlaylistsService;

@@ -37,35 +37,36 @@ class AuthenticationsHandler {
   }
 
   async putAuthenticationHandler(request) {
-    this._validator.validatePutAuthenticationPayload(request.payload);
+  this._validator.validatePutAuthenticationPayload(request.payload);
 
-    const { refreshToken } = request.payload;
-    // Verifikasi refresh token di database & signature-nya
-    await this._authenticationsService.verifyRefreshToken(refreshToken);
-    const { userId } = this._tokenManager.verifyRefreshToken(refreshToken);
+  const { refreshToken } = request.payload;
+  // 1. Verifikasi token ada di database
+  await this._authenticationsService.verifyRefreshToken(refreshToken);
+  // 2. Verifikasi signature token
+  const { userId } = this._tokenManager.verifyRefreshToken(refreshToken);
 
-    const accessToken = this._tokenManager.generateAccessToken({ userId });
-    return {
-      status: 'success',
-      message: 'Access Token berhasil diperbarui',
-      data: {
-        accessToken,
-      },
-    };
-  }
-
-  async deleteAuthenticationHandler(request) {
-    this._validator.validateDeleteAuthenticationPayload(request.payload);
-
-    const { refreshToken } = request.payload;
-    await this._authenticationsService.verifyRefreshToken(refreshToken);
-    await this._authenticationsService.deleteRefreshToken(refreshToken);
-
-    return {
-      status: 'success',
-      message: 'Refresh token berhasil dihapus',
-    };
-  }
+  const accessToken = this._tokenManager.generateAccessToken({ userId });
+  return {
+    status: 'success',
+    message: 'Access Token berhasil diperbarui',
+    data: {
+      accessToken,
+    },
+  };
 }
 
+async deleteAuthenticationHandler(request) {
+  this._validator.validateDeleteAuthenticationPayload(request.payload);
+
+  const { refreshToken } = request.payload;
+  // Verifikasi dulu baru hapus
+  await this._authenticationsService.verifyRefreshToken(refreshToken);
+  await this._authenticationsService.deleteRefreshToken(refreshToken);
+
+  return {
+    status: 'success',
+    message: 'Refresh token berhasil dihapus',
+  };
+}
+}
 module.exports = AuthenticationsHandler;
