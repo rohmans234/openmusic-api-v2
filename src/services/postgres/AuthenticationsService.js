@@ -22,7 +22,6 @@ class AuthenticationsService {
     const result = await this._pool.query(query);
 
     if (!result.rows.length) {
-      // WAJIB melempar InvariantError agar status code menjadi 400 di Postman
       throw new InvariantError('Refresh token tidak valid');
     }
   }
@@ -36,5 +35,4 @@ class AuthenticationsService {
   }
 }
 
-// EKSPOR HARUS SEPERTI INI (TANPA KURUNG KURAWAL)
-module.exports = AuthenticationsService;
+module.exports = AuthenticationsService; // Pastikan TANPA kurung kurawal

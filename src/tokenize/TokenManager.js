@@ -7,12 +7,10 @@ const TokenManager = {
   verifyRefreshToken: (refreshToken) => {
     try {
       const artifacts = Jwt.token.decode(refreshToken);
-      // Signature diverifikasi dengan REFRESH_TOKEN_KEY dari .env
       Jwt.token.verifySignature(artifacts, process.env.REFRESH_TOKEN_KEY);
       const { payload } = artifacts.decoded;
       return payload;
     } catch (error) {
-      // Ubah error JWT menjadi InvariantError (Status 400)
       throw new InvariantError('Refresh token tidak valid');
     }
   },

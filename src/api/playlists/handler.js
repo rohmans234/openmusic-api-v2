@@ -51,14 +51,12 @@ class PlaylistsHandler {
   const { id: credentialId } = request.auth.credentials;
 
   await this._service.verifyPlaylistAccess(playlistId, credentialId);
-  
-
   const playlist = await this._service.getSongsFromPlaylist(playlistId);
 
   return {
     status: 'success',
     data: {
-      playlist, 
+      playlist, // Postman mencari objek 'playlist'
     },
   };
 }

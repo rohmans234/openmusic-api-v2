@@ -67,36 +67,51 @@ const init = async () => {
   ]);
 
   server.ext('onPreResponse', (request, h) => {
-  const { response } = request;
+    const { response } = request;
 
-  if (response instanceof Error) {
-    // Penanganan client error secara internal (400, 401, 403, 404)
-    if (response instanceof ClientError) {
+    if (response instanceof Error) {
+      // Penanganan client error secara internal (400, 401, 403, 404)
+      if (response instanceof ClientError) {
+        const newResponse = h.response({
+          status: 'fail',
+          message: response.message,
+        });
+        newResponse.code(response.statusCode);
+        return newResponse;
+      }
+
+      // Mempertahankan penanganan error bawaan Hapi (seperti 401 dari auth strategy)
+      if (!response.isServer) {
+        return h.continue;
+      }
+
+      // Log stack untuk debugging server error
+      // (tidak mengubah respons produksi selain logging)
+      // eslint-disable-next-line no-console
+      console.error('Server error:', response.stack || response.message);
+
+      // Penanganan server error (500)
       const newResponse = h.response({
-        status: 'fail',
-        message: response.message,
+        status: 'error',
+        message: 'Maaf, terjadi kegagalan pada server kami.',
       });
-      newResponse.code(response.statusCode);
+      newResponse.code(500);
       return newResponse;
     }
 
-    // Mempertahankan penanganan error bawaan Hapi (seperti 401 dari auth strategy)
-    if (!response.isServer) {
-      return h.continue;
-    }
+    return h.continue;
+  });
 
-    // Penanganan server error (500)
-    const newResponse = h.response({
-      status: 'error',
-      message: 'Maaf, terjadi kegagalan pada server kami.',
-    });
-    newResponse.code(500);
-    return newResponse;
-  }
-
-  return h.continue;
-});
-
+  await server.start();
+  console.log(`Server berjalan pada ${server.info.uri}`);
 };
 
-init();
+(async () => {
+  try {
+    await init();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to start server:', err.stack || err.message);
+    process.exit(1);
+  }
+})();
