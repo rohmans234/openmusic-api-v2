@@ -1,0 +1,443 @@
+{
+  "info": {
+    "name": "OpenMusic API v3",
+    "description": "Collection untuk testing OpenMusic API versi 3",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"johndoe\",\n  \"password\": \"password123\",\n  \"fullname\": \"John Doe\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/users",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["users"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const response = pm.response.json();",
+                  "  pm.environment.set('accessToken', response.data.accessToken);",
+                  "  pm.environment.set('refreshToken', response.data.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"johndoe\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/authentications",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["authentications"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Albums",
+      "item": [
+        {
+          "name": "Create Album",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Viva la Vida\",\n  \"year\": 2008\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/albums",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["albums"]
+            }
+          }
+        },
+        {
+          "name": "Get Album by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:5000/albums/{{albumId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["albums", "{{albumId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Album",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Viva la Vida (Updated)\",\n  \"year\": 2008\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/albums/{{albumId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["albums", "{{albumId}}"]
+            }
+          }
+        },
+        {
+          "name": "Upload Album Cover",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "cover",
+                  "value": "path/to/image.jpg",
+                  "type": "file"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:5000/albums/{{albumId}}/covers",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["albums", "{{albumId}}", "covers"]
+            }
+          }
+        },
+        {
+          "name": "Delete Album",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "http://localhost:5000/albums/{{albumId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["albums", "{{albumId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Album Likes (V3)",
+      "item": [
+        {
+          "name": "Like Album",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/albums/{{albumId}}/likes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["albums", "{{albumId}}", "likes"]
+            }
+          }
+        },
+        {
+          "name": "Unlike Album",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/albums/{{albumId}}/likes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["albums", "{{albumId}}", "likes"]
+            }
+          }
+        },
+        {
+          "name": "Get Album Likes (Cached)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/albums/{{albumId}}/likes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["albums", "{{albumId}}", "likes"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Playlists",
+      "item": [
+        {
+          "name": "Create Playlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Favorite Songs\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/playlists",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["playlists"]
+            }
+          }
+        },
+        {
+          "name": "Get Playlists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/playlists",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["playlists"]
+            }
+          }
+        },
+        {
+          "name": "Add Song to Playlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"songId\": \"{{songId}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/playlists/{{playlistId}}/songs",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["playlists", "{{playlistId}}", "songs"]
+            }
+          }
+        },
+        {
+          "name": "Get Songs in Playlist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/playlists/{{playlistId}}/songs",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["playlists", "{{playlistId}}", "songs"]
+            }
+          }
+        },
+        {
+          "name": "Delete Song from Playlist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"songId\": \"{{songId}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/playlists/{{playlistId}}/songs",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["playlists", "{{playlistId}}", "songs"]
+            }
+          }
+        },
+        {
+          "name": "Get Playlist Activities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/playlists/{{playlistId}}/activities",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["playlists", "{{playlistId}}", "activities"]
+            }
+          }
+        },
+        {
+          "name": "Export Playlist (V3)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetEmail\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/export/playlists/{{playlistId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["export", "playlists", "{{playlistId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Playlist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/playlists/{{playlistId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["playlists", "{{playlistId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "albumId",
+      "value": ""
+    },
+    {
+      "key": "songId",
+      "value": ""
+    },
+    {
+      "key": "playlistId",
+      "value": ""
+    }
+  ]
+}

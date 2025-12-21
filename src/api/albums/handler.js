@@ -1,9 +1,10 @@
 const autoBind = require('auto-bind');
 
 class AlbumsHandler {
-  constructor(service, validator) {
+  constructor(service, validator, coverService) {
     this._service = service;
     this._validator = validator;
+    this._coverService = coverService;
 
     autoBind(this); 
   }
@@ -55,6 +56,20 @@ class AlbumsHandler {
       status: 'success',
       message: 'Album berhasil dihapus',
     };
+  }
+
+  async postAlbumCoverHandler(request, h) {
+    const { id } = request.params;
+    const { cover } = request.payload;
+
+    await this._coverService.uploadCover(id, cover);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Sampul berhasil diunggah',
+    });
+    response.code(201);
+    return response;
   }
 }
 

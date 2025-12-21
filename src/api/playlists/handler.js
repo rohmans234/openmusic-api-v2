@@ -1,9 +1,10 @@
 const autoBind = require('auto-bind');
 
 class PlaylistsHandler {
-  constructor(service, validator) {
+  constructor(service, validator, producerService) {
     this._service = service;
     this._validator = validator;
+    this._producerService = producerService;
     autoBind(this); // Menggunakan auto-bind agar this tetap aman
   }
 
@@ -80,6 +81,29 @@ class PlaylistsHandler {
     await this._service.verifyPlaylistAccess(playlistId, credentialId);
     const activities = await this._service.getPlaylistActivities(playlistId);
     return { status: 'success', data: { playlistId, activities } };
+  }
+
+  async postExportPlaylistHandler(request, h) {
+    this._validator.validateExportPlaylistPayload(request.payload);
+    const { playlistId } = request.params;
+    const { targetEmail } = request.payload;
+    const { id: credentialId } = request.auth.credentials;
+
+    // Verifikasi bahwa user adalah owner playlist
+    await this._service.verifyPlaylistOwner(playlistId, credentialId);
+
+    // Kirim pesan ke RabbitMQ
+    await this._producerService.sendPlaylistExportMessage({
+      playlistId,
+      targetEmail,
+    });
+
+    const response = h.response({
+      status: 'success',
+      message: 'Permintaan Anda sedang kami proses',
+    });
+    response.code(201);
+    return response;
   }
 }
 
