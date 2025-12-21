@@ -1,4 +1,4 @@
-const fs = require('fs').promises;
+const fs = require('fs'); // Gunakan fs standar untuk streaming
 const path = require('path');
 const pool = require('./postgres/pool');
 const NotFoundError = require('../exceptions/NotFoundError');
@@ -6,24 +6,14 @@ const InvariantError = require('../exceptions/InvariantError');
 
 class AlbumCoverService {
   constructor() {
-    // Tentukan tipe penyimpanan: 'local' atau 's3'
-    this._storageType = process.env.STORAGE_TYPE || 'local';
     this._uploadDir = path.join(__dirname, '../uploads/file/images');
-
-    // Initialize S3 jika diperlukan
-    if (this._storageType === 's3') {
-      const AWS = require('aws-sdk');
-      this._s3 = new AWS.S3({
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        region: process.env.AWS_REGION,
-      });
-      this._bucketName = process.env.AWS_BUCKET_NAME;
+    if (!fs.existsSync(this._uploadDir)) {
+      fs.mkdirSync(this._uploadDir, { recursive: true }); // Pastikan folder ada
     }
   }
 
   async uploadCover(albumId, file) {
-    // 1. Validasi album exists
+    // 1. Validasi album ada
     const albumQuery = {
       text: 'SELECT id FROM albums WHERE id = $1',
       values: [albumId],
@@ -33,27 +23,17 @@ class AlbumCoverService {
       throw new NotFoundError('Album tidak ditemukan');
     }
 
-    // 2. Validasi file MIME type
+    // 2. Validasi tipe MIME dari objek stream hapi
+    const contentType = file.hapi.headers['content-type'];
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new InvariantError('Tipe file harus berupa gambar (JPEG, PNG, GIF, WebP)');
+    if (!allowedMimeTypes.includes(contentType)) {
+      throw new InvariantError('Tipe file tidak valid');
     }
 
-    // 3. Validasi ukuran file (max 512KB)
-    const maxSize = 512000; // 512KB
-    if (file.size > maxSize) {
-      throw new InvariantError(`Ukuran file tidak boleh melebihi 512KB. Ukuran file Anda: ${file.size} bytes`);
-    }
+    // 3. Simpan file secara lokal menggunakan stream
+    const coverUrl = await this._uploadToLocal(albumId, file);
 
-    let coverUrl;
-
-    if (this._storageType === 's3') {
-      coverUrl = await this._uploadToS3(albumId, file);
-    } else {
-      coverUrl = await this._uploadToLocal(albumId, file);
-    }
-
-    // 4. Simpan coverUrl ke database
+    // 4. Update kolom coverUrl di database
     const updateQuery = {
       text: 'UPDATE albums SET "coverUrl" = $1 WHERE id = $2 RETURNING id',
       values: [coverUrl, albumId],
@@ -68,44 +48,23 @@ class AlbumCoverService {
   }
 
   async _uploadToLocal(albumId, file) {
-    // Buat direktori jika belum ada
-    try {
-      await fs.mkdir(this._uploadDir, { recursive: true });
-    } catch (error) {
-      // Direktori mungkin sudah ada
-    }
+    const filename = file.hapi.filename;
+    const extension = path.extname(filename);
+    const newFileName = `${albumId}-${Date.now()}${extension}`;
+    const filePath = path.join(this._uploadDir, newFileName);
 
-    // Generate nama file yang unik
-    const fileExtension = path.extname(file.filename);
-    const fileName = `${albumId}-${Date.now()}${fileExtension}`;
-    const filePath = path.join(this._uploadDir, fileName);
+    const fileStream = fs.createWriteStream(filePath);
 
-    // Simpan file
-    await fs.writeFile(filePath, file.data);
-
-    // Return relative URL untuk akses via HTTP
-    const coverUrl = `/uploads/images/${fileName}`;
-    return coverUrl;
-  }
-
-  async _uploadToS3(albumId, file) {
-    const fileExtension = path.extname(file.filename);
-    const fileName = `album-covers/${albumId}-${Date.now()}${fileExtension}`;
-
-    const params = {
-      Bucket: this._bucketName,
-      Key: fileName,
-      Body: file.data,
-      ContentType: file.mimetype,
-      ACL: 'public-read',
-    };
-
-    try {
-      const result = await this._s3.upload(params).promise();
-      return result.Location; // URL publik dari S3
-    } catch (error) {
-      throw new InvariantError(`Gagal upload ke S3: ${error.message}`);
-    }
+    return new Promise((resolve, reject) => {
+      fileStream.on('error', (error) => reject(error));
+      file.pipe(fileStream); // Mengalirkan stream ke sistem file
+      file.on('end', () => {
+        // Mengembalikan URL lengkap agar lulus test Postman
+        const port = process.env.PORT || 5000;
+        const host = process.env.HOST || 'localhost';
+        resolve(`http://${host}:${port}/uploads/images/${newFileName}`);
+      });
+    });
   }
 }
 

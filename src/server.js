@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const Hapi = require('@hapi/hapi');
 const Jwt = require('@hapi/jwt');
+const Inert = require('@hapi/inert');
 
 // 1. Import Plugin API
 const albums = require('./api/albums');
@@ -22,7 +23,7 @@ const CollaborationsService = require('./services/postgres/CollaborationsService
 const PlaylistsService = require('./services/postgres/PlaylistsService');
 const AlbumLikesService = require('./services/postgres/AlbumLikesService'); // [FIXED]
 const CacheService = require('./services/redis/CacheService'); // [FIXED]
-const ProducerService = require('./services/rabbitmq/ProducerService'); // [FIXED] Kriteria 1
+
 const ProducerService = require('./services/rabbitmq/ProducerService');
 
 // 3. Import Validators
@@ -57,7 +58,7 @@ const init = async () => {
     routes: { cors: { origin: ['*'] } },
   });
 
-  await server.register([{ plugin: Jwt }]);
+  await server.register([{ plugin: Jwt },{ plugin: Inert }]);
 
   server.auth.strategy('openmusicapp_jwt', 'jwt', {
     keys: process.env.ACCESS_TOKEN_KEY,
@@ -79,15 +80,15 @@ const init = async () => {
   ]);
 
   // Serve static files untuk local storage
-  server.route({
-    method: 'GET',
-    path: '/uploads/images/{param*}',
-    handler: {
-      directory: {
-        path: require('path').join(__dirname, 'uploads/file/images'),
-      },
+ server.route({
+  method: 'GET',
+  path: '/uploads/images/{param*}',
+  handler: {
+    directory: {
+      path: require('path').join(__dirname, 'uploads/file/images'),
     },
-  });
+  },
+});
 
   server.ext('onPreResponse', (request, h) => {
     const { response } = request;
