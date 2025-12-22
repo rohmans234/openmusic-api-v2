@@ -1,3 +1,4 @@
+
 const { nanoid } = require('nanoid');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
@@ -9,7 +10,6 @@ class AlbumLikesService {
   }
 
   async addAlbumLike(albumId, userId) {
-    // 1. Pastikan album ada
     const queryCheckAlbum = {
       text: 'SELECT id FROM albums WHERE id = $1',
       values: [albumId],
@@ -17,7 +17,6 @@ class AlbumLikesService {
     const resultAlbum = await this._pool.query(queryCheckAlbum);
     if (!resultAlbum.rows.length) throw new NotFoundError('Album tidak ditemukan');
 
-    // 2. Cek apakah sudah pernah like (Database UNIQUE constraint juga akan menjaga ini)
     const queryCheckLike = {
       text: 'SELECT id FROM user_album_likes WHERE user_id = $1 AND album_id = $2',
       values: [userId, albumId],
@@ -34,7 +33,6 @@ class AlbumLikesService {
     const result = await this._pool.query(query);
     if (!result.rows.length) throw new InvariantError('Gagal menyukai album');
 
-    // 3. Hapus cache (Kriteria 4)
     await this._cacheService.delete(`likes:${albumId}`);
     return result.rows[0].id;
   }
@@ -48,20 +46,23 @@ class AlbumLikesService {
     const result = await this._pool.query(query);
     if (!result.rows.length) throw new NotFoundError('Gagal batal menyukai. Like tidak ditemukan');
 
-    // Hapus cache (Kriteria 4)
     await this._cacheService.delete(`likes:${albumId}`);
   }
 
   async getAlbumLikes(albumId) {
+    const queryCheckAlbum = {
+        text: 'SELECT id FROM albums WHERE id = $1',
+        values: [albumId],
+      };
+      const resultAlbum = await this._pool.query(queryCheckAlbum);
+      if (!resultAlbum.rows.length) throw new NotFoundError('Album tidak ditemukan');
     try {
-      // 1. Coba ambil dari cache
       const result = await this._cacheService.get(`likes:${albumId}`);
       return {
         likes: parseInt(result, 10),
-        source: 'cache', // Untuk menandai sumber data (Kriteria 4)
+        source: 'cache',
       };
     } catch (error) {
-      // 2. Jika gagal/tidak ada, ambil dari database
       const query = {
         text: 'SELECT COUNT(id) FROM user_album_likes WHERE album_id = $1',
         values: [albumId],
@@ -70,7 +71,6 @@ class AlbumLikesService {
       const result = await this._pool.query(query);
       const likesCount = parseInt(result.rows[0].count, 10);
 
-      // 3. Simpan ke cache untuk permintaan berikutnya
       await this._cacheService.set(`likes:${albumId}`, likesCount);
 
       return {
