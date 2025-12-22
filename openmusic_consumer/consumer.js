@@ -8,7 +8,9 @@ const pool = require('./src/services/postgres/pool');
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
-  secure: true,
+  // Ubah secure: true menjadi logika ini:
+  // Bernilai true hanya jika port 465, selain itu false
+  secure: process.env.SMTP_PORT == 465, 
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
@@ -112,13 +114,22 @@ async function consumePlaylistExportMessage() {
           // Kirim email
           await sendPlaylistEmail(playlistData, targetEmail);
 
-          // Acknowledge message
+          // Acknowledge message (Berhasil)
           channel.ack(msg);
           console.log('Message processed successfully');
         } catch (error) {
           console.error('Error processing message:', error);
-          // Nack message dan requeue
-          channel.nack(msg, false, true);
+
+          // PERBAIKAN LOGIKA REQUEUE:
+          // Jika error karena 'Playlist tidak ditemukan', jangan dikembalikan ke antrean (requeue: false)
+          // Pesan ini dianggap gagal permanen (karena datanya sudah tidak ada).
+          if (error.message === 'Playlist tidak ditemukan') {
+             console.log('Pesan dibuang karena Playlist sudah tidak ada di database.');
+             channel.nack(msg, false, false); // false = jangan requeue
+          } else {
+             // Jika error lain (misal koneksi database putus), kembalikan ke antrean agar dicoba lagi
+             channel.nack(msg, false, true); // true = requeue
+          }
         }
       }
     });

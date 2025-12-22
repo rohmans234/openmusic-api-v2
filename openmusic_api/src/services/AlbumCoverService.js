@@ -1,4 +1,3 @@
-
 const fs = require('fs');
 const path = require('path');
 const pool = require('./postgres/pool');
@@ -14,6 +13,7 @@ class AlbumCoverService {
   }
 
   async uploadCover(albumId, file) {
+    // Cek keberadaan album
     const albumQuery = {
       text: 'SELECT id FROM albums WHERE id = $1',
       values: [albumId],
@@ -23,14 +23,18 @@ class AlbumCoverService {
       throw new NotFoundError('Album tidak ditemukan');
     }
 
+    // Validasi tipe file (opsional jika sudah di handler/route)
     const contentType = file.hapi.headers['content-type'];
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!allowedMimeTypes.includes(contentType)) {
       throw new InvariantError('Tipe file tidak valid');
     }
 
+    // Upload file
     const coverUrl = await this._uploadToLocal(albumId, file);
 
+    // Update database
+    // PENTING: Gunakan "coverUrl" (dengan tanda kutip)
     const updateQuery = {
       text: 'UPDATE albums SET "coverUrl" = $1 WHERE id = $2 RETURNING id',
       values: [coverUrl, albumId],
@@ -58,7 +62,8 @@ class AlbumCoverService {
       file.on('end', () => {
         const port = process.env.PORT || 5000;
         const host = process.env.HOST || 'localhost';
-        resolve(`/uploads/images/${newFileName}`);
+        // Mengembalikan URL lengkap agar valid saat testing
+        resolve(`http://${host}:${port}/uploads/images/${newFileName}`);
       });
     });
   }

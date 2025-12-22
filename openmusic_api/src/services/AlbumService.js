@@ -1,7 +1,7 @@
 const pool = require('./postgres/pool');
 const { nanoid } = require('nanoid');
-const NotFoundError = require('../exceptions/NotFoundError'); 
-const InvariantError = require('../exceptions/InvariantError'); 
+const NotFoundError = require('../exceptions/NotFoundError');
+const InvariantError = require('../exceptions/InvariantError');
 
 class AlbumsService {
   async addAlbum({ name, year }) {
@@ -21,26 +21,31 @@ class AlbumsService {
   }
 
   async getAlbumById(id) {
-    const albumQuery = { 
-      text: 'SELECT id, name, year, "coverUrl" FROM albums WHERE id=$1',
+    // QUERY 1: Ambil detail album
+    // PENTING: Gunakan tanda kutip "coverUrl" agar cocok dengan kolom database
+    const albumQuery = {
+      text: 'SELECT id, name, year, "coverUrl" FROM albums WHERE id = $1',
       values: [id],
     };
-
-    const songsQuery = { 
-      text: 'SELECT id, title, performer FROM songs WHERE album_id=$1',
-      values: [id],
-    };
-
     const albumResult = await pool.query(albumQuery);
 
     if (!albumResult.rows.length) {
-      throw new NotFoundError('Album tidak ditemukan'); 
+      throw new NotFoundError('Album tidak ditemukan');
     }
+
+    const album = albumResult.rows[0];
+
+    // QUERY 2: Ambil daftar lagu
+    // PENTING: Gunakan album_id (snake_case) sesuai migrasi tabel songs
+    const songsQuery = {
+      text: 'SELECT id, title, performer FROM songs WHERE album_id = $1',
+      values: [id],
+    };
 
     const songsResult = await pool.query(songsQuery);
 
-    const album = albumResult.rows[0];
-    album.songs = songsResult.rows; 
+    // Gabungkan songs ke dalam object album
+    album.songs = songsResult.rows;
 
     return album;
   }
@@ -54,7 +59,7 @@ class AlbumsService {
     const result = await pool.query(query);
 
     if (!result.rows.length) {
-      throw new NotFoundError('Gagal memperbarui album. Id tidak ditemukan'); 
+      throw new NotFoundError('Gagal memperbarui album. Id tidak ditemukan');
     }
   }
 
@@ -67,7 +72,7 @@ class AlbumsService {
     const result = await pool.query(query);
 
     if (!result.rows.length) {
-      throw new NotFoundError('Album gagal dihapus. Id tidak ditemukan'); 
+      throw new NotFoundError('Album gagal dihapus. Id tidak ditemukan');
     }
   }
 }
